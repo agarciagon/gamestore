@@ -1,0 +1,32 @@
+/* ── TABLA PEDIDOS CLIENTE ─────────────────────────────────────────────── */
+#ordersTable_filter {
+    margin-bottom: 1rem;
+}
+
+/* Buscador */
+#ordersTable_filter input {
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.5rem;
+    background-color: #1f2937;
+    border: 1px solid #4b5563;
+    color: #fff;
+}
+
+#ordersTable_filter input:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px #0ea5e9;
+}
+
+/* Selector de filas */
+#ordersTable_length select {
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.5rem;
+    background-color: #1f2937;
+    border: 1px solid #4b5563;
+    color: #fff;
+}
+
+#ordersTable_length select:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px #0ea5e9;
+}

@@ -1,0 +1,13 @@
+Options -Indexes
+RewriteEngine On
+
+# Bloquear acceso directo a app/, config/, vendor/, .env
+RewriteRule ^(app|config|vendor|sql)/  - [F,L]
+RewriteRule ^\.env                     - [F,L]
+
+# Dejar pasar archivos y directorios reales (css, js, img, etc.)
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Todo lo demas va al front controller
+RewriteRule ^ index.php [QSA,L]

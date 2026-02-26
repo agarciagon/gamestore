@@ -1,0 +1,17 @@
+# Credenciales — NUNCA subir a git
+.env
+
+# Dependencias
+vendor/
+node_modules/
+
+# Build de Tailwind
+dist/
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+error_log
