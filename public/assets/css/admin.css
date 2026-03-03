@@ -946,8 +946,4 @@ input[type="checkbox"] {
         margin-left: 0 !important;
         padding: 16px;
     }
-
-    .stripe-table {
-        display: none;
-    }
 }
