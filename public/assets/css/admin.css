@@ -533,6 +533,116 @@ body {
     color: var(--accent);
 }
 
+.panel {
+    overflow: visible !important;
+}
+
+.filter-bar {
+    overflow: visible;
+    position: relative;
+    z-index: 100;
+}
+
+.dropdown-wrapper {
+    position: relative;
+    display: inline-block;
+}
+
+.dropdown-menu {
+    display: none;
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    z-index: 1050;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, .13);
+    min-width: 200px;
+    padding: 6px 0 8px;
+}
+
+.dropdown-menu.open {
+    display: block;
+}
+
+.dropdown-menu label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 16px;
+    font-size: 13px;
+    color: #374151;
+    cursor: pointer;
+    user-select: none;
+    transition: background .12s;
+}
+
+.dropdown-menu label:hover {
+    background: #f9fafb;
+}
+
+.dropdown-menu label input {
+    flex-shrink: 0;
+    accent-color: #635bff;
+}
+
+.dd-section {
+    font-size: 10px;
+    font-weight: 700;
+    color: #9ca3af;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    padding: 10px 16px 3px;
+}
+
+.dd-divider {
+    border: none;
+    border-top: 1px solid #f3f4f6;
+    margin: 5px 0;
+}
+
+.dd-date {
+    padding: 4px 16px 2px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.dd-date span {
+    font-size: 11px;
+    color: #6b7280;
+}
+
+.dd-date input[type=date] {
+    padding: 5px 8px;
+    border: 1px solid #e5e7eb;
+    border-radius: 7px;
+    font-size: 12px;
+    color: #111827;
+    outline: none;
+    width: 100%;
+}
+
+.dd-apply {
+    display: block;
+    margin: 7px 16px 2px;
+    background: #635bff;
+    color: #fff;
+    border: none;
+    border-radius: 7px;
+    padding: 7px 0;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    width: calc(100% - 32px);
+    transition: background .15s;
+}
+
+.dd-apply:hover {
+    background: #4f46e5;
+}
+
 /* ── FILTER BAR ──────────────────────────────────────────────────────────── */
 .filter-bar {
     display: flex;

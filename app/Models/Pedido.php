@@ -11,7 +11,7 @@ class Pedido
         try {
             $this->pdo->prepare(
                 "INSERT INTO pedidos (id_usuario, stripe_sid, total, estado, fecha_pedido)
-                 VALUES (?, ?, ?, 'pagado', NOW())"
+                 VALUES (?, ?, ?, 'Successful', NOW())"
             )->execute([$uid, $stripeSid, $total]);
 
             $id = (int) $this->pdo->lastInsertId();
@@ -21,12 +21,7 @@ class Pedido
                  VALUES (?, ?, ?, ?)'
             );
             foreach ($items as $item) {
-                $stmtItem->execute([
-                    $id,
-                    $item['id_videojuego'],
-                    $item['cantidad'],
-                    $item['precio_unidad'],
-                ]);
+                $stmtItem->execute([$id, $item['id_videojuego'], $item['cantidad'], $item['precio_unidad']]);
             }
 
             $this->pdo->commit();
@@ -42,7 +37,7 @@ class Pedido
     {
         $stmt = $this->pdo->prepare('SELECT * FROM pedidos WHERE stripe_sid = ? LIMIT 1');
         $stmt->execute([$sid]);
-        return $stmt->fetch() ?: null;
+        return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
     public function existeConStripeSid(string $sid): bool
@@ -56,7 +51,7 @@ class Pedido
     {
         $stmt = $this->pdo->prepare('SELECT * FROM pedidos WHERE id = ? LIMIT 1');
         $stmt->execute([$id]);
-        $pedido = $stmt->fetch();
+        $pedido = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$pedido) return null;
 
         $stmt2 = $this->pdo->prepare(
@@ -66,15 +61,14 @@ class Pedido
              WHERE pi.id_pedido = ?'
         );
         $stmt2->execute([$id]);
-        $pedido['items'] = $stmt2->fetchAll();
+        $pedido['items'] = $stmt2->fetchAll(PDO::FETCH_ASSOC);
         return $pedido;
     }
 
     public function getByUsuario(int $uid): array
     {
         $stmt = $this->pdo->prepare(
-            'SELECT p.id, p.total, p.estado, p.fecha_pedido,
-                    COUNT(pi.id) AS num_juegos
+            'SELECT p.id, p.total, p.estado, p.fecha_pedido, COUNT(pi.id) AS num_juegos
              FROM pedidos p
              LEFT JOIN pedido_items pi ON pi.id_pedido = p.id
              WHERE p.id_usuario = ?
@@ -82,7 +76,7 @@ class Pedido
              ORDER BY p.fecha_pedido DESC'
         );
         $stmt->execute([$uid]);
-        $pedidos = $stmt->fetchAll();
+        $pedidos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         foreach ($pedidos as &$p) {
             $s = $this->pdo->prepare(
@@ -92,10 +86,9 @@ class Pedido
                  WHERE pi.id_pedido = ?'
             );
             $s->execute([$p['id']]);
-            $p['items'] = $s->fetchAll();
+            $p['items'] = $s->fetchAll(PDO::FETCH_ASSOC);
         }
         unset($p);
-
         return $pedidos;
     }
 
@@ -106,31 +99,39 @@ class Pedido
                     u.nombre AS cliente_nombre, u.email AS cliente_email,
                     COUNT(pi.id) AS num_items
              FROM pedidos p
-             LEFT JOIN usuarios u ON u.id_usuario = p.id_usuario
+             LEFT JOIN usuarios u  ON u.id_usuario  = p.id_usuario
              LEFT JOIN pedido_items pi ON pi.id_pedido = p.id
              GROUP BY p.id
              ORDER BY p.fecha_pedido DESC'
-        )->fetchAll();
+        )->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function getStats(): array
     {
-        return $this->pdo->query(
+        // ENUM values en BD: 'Successful' | 'Pending' | 'Error'
+        $row = $this->pdo->query(
             "SELECT
-                COUNT(*)                                                       AS total_pedidos,
-                COALESCE(SUM(total), 0)                                        AS ingresos_totales,
-                COALESCE(SUM(CASE WHEN estado='pagado' THEN total END), 0)     AS ingresos_pagados,
-                COUNT(CASE WHEN estado='pagado'      THEN 1 END)               AS pagados,
-                COUNT(CASE WHEN estado='pendiente'   THEN 1 END)               AS pendientes,
-                COUNT(CASE WHEN estado='reembolsado' THEN 1 END)               AS reembolsados
+                COUNT(*)                                                                AS total_pedidos,
+                COALESCE(SUM(total), 0)                                                 AS ingresos_totales,
+                COALESCE(SUM(CASE WHEN estado='Successful' THEN total END), 0)          AS ingresos_pagados,
+                COUNT(CASE WHEN estado='Successful' THEN 1 END)                         AS pagados,
+                COUNT(CASE WHEN estado='Pending'    THEN 1 END)                         AS pendientes,
+                COUNT(CASE WHEN estado='Error'      THEN 1 END)                         AS errores
              FROM pedidos"
-        )->fetch();
+        )->fetch(PDO::FETCH_ASSOC);
+
+        return [
+            'total_pedidos'    => (int)   ($row['total_pedidos']    ?? 0),
+            'ingresos_totales' => (float) ($row['ingresos_totales'] ?? 0),
+            'ingresos_pagados' => (float) ($row['ingresos_pagados'] ?? 0),
+            'pagados'          => (int)   ($row['pagados']          ?? 0),
+            'pendientes'       => (int)   ($row['pendientes']       ?? 0),
+            'errores'          => (int)   ($row['errores']          ?? 0),
+        ];
     }
 
     public function updateEstado(int $id, string $estado): void
     {
-        $this->pdo->prepare(
-            "UPDATE pedidos SET estado = ? WHERE id = ?"
-        )->execute([$estado, $id]);
+        $this->pdo->prepare("UPDATE pedidos SET estado = ? WHERE id = ?")->execute([$estado, $id]);
     }
 }

@@ -1,9 +1,5 @@
 <?php
 // app/Controllers/PagoController.php
-// Gestiona la integracion completa con Stripe:
-//   - checkout()  → crea la sesion de Stripe y redirige
-//   - webhook()   → recibe el evento de Stripe, crea el pedido, vacia carrito, envia email
-//   - success()   → pagina de confirmacion (solo informativa, la logica va en webhook)
 
 require_once BASE_PATH . '/app/Models/Carrito.php';
 require_once BASE_PATH . '/app/Models/Videojuego.php';
@@ -12,6 +8,9 @@ require_once BASE_PATH . '/app/Models/Usuario.php';
 require_once BASE_PATH . '/app/Services/StripeService.php';
 require_once BASE_PATH . '/app/Services/MailService.php';
 require_once BASE_PATH . '/app/Helpers/Auth.php';
+
+// IVA aplicado a todos los precios (21 %)
+const IVA = 1.21;
 
 class PagoController
 {
@@ -32,8 +31,7 @@ class PagoController
         $this->mailer   = new MailService();
     }
 
-    // ── POST /cliente/checkout.php ───────────────────────────────────────────
-    // Solo usuarios logueados pueden pagar
+    // ── POST /cliente/checkout ────────────────────────────────────────────────
     public function checkout(): void
     {
         Auth::requireLogin();
@@ -47,8 +45,14 @@ class PagoController
             exit;
         }
 
+        // Aplicar IVA antes de enviar a Stripe
+        $itemsConIva = array_map(function ($i) {
+            $i['precio'] = round($i['precio'], 2);
+            return $i;
+        }, $items);
+
         try {
-            $url = $this->stripe->crearSesion($items, $uid);
+            $url = $this->stripe->crearSesion($itemsConIva, $uid);
             header('Location: ' . $url);
             exit;
         } catch (\Throwable $e) {
@@ -59,11 +63,7 @@ class PagoController
         }
     }
 
-    // ── POST /cliente/webhook.php ─────────────────────────────────────────────
-    // IMPORTANTE: este endpoint NO debe tener session_start ni output previo.
-    // Stripe envia el raw body — hay que leerlo antes de cualquier otro procesamiento.
-    // Registrar en Stripe Dashboard: https://dashboard.stripe.com/webhooks
-    // O en local: stripe listen --forward-to http://localhost/CRUD_AGG/cliente/webhook.php
+    // ── POST /pago/webhook ────────────────────────────────────────────────────
     public function webhook(): void
     {
         $payload   = file_get_contents('php://input');
@@ -77,7 +77,6 @@ class PagoController
             exit;
         }
 
-        // Solo nos interesa el evento de pago completado
         if ($event->type !== 'checkout.session.completed') {
             http_response_code(200);
             exit;
@@ -86,7 +85,6 @@ class PagoController
         $session = $event->data->object;
         $sid     = $session->id;
 
-        // Idempotencia: si ya procesamos este sid, ignorar
         if ($this->pedidos->existeConStripeSid($sid)) {
             http_response_code(200);
             exit;
@@ -100,7 +98,6 @@ class PagoController
             exit;
         }
 
-        // Construir items del pedido desde el carrito BD
         $carritoItems = $this->carrito->getByUsuario($uid);
         if (empty($carritoItems)) {
             error_log('[Webhook] Carrito vacio para uid=' . $uid . ', sid=' . $sid);
@@ -108,21 +105,22 @@ class PagoController
             exit;
         }
 
+        // Guardar precio_unidad CON IVA incluido
         $pedidoItems = array_map(fn($i) => [
             'id_videojuego' => $i['id_videojuego'],
             'cantidad'      => $i['cantidad'],
-            'precio_unidad' => $i['precio'],
+            'precio_unidad' => round($i['precio'] * IVA, 2),
         ], $carritoItems);
 
-        $total = array_reduce($carritoItems, fn($acc, $i) => $acc + ($i['precio'] * $i['cantidad']), 0.0);
+        // Total CON IVA
+        $total = round(array_reduce($carritoItems, fn($acc, $i) =>
+            $acc + round($i['precio'] * IVA, 2) * $i['cantidad']
+        , 0.0), 2);
 
         try {
             $idPedido = $this->pedidos->crear($uid, $total, $pedidoItems, $sid);
-
-            // Vaciar carrito (el stock ya estaba decrementado al anadir al carrito)
             $this->carrito->vaciar($uid);
 
-            // Enviar email de confirmacion
             $pedidoConItems = $this->pedidos->findWithItems($idPedido);
             $this->mailer->enviar(
                 $usuario['email'],
@@ -135,8 +133,7 @@ class PagoController
                     'total'     => $total,
                 ]
             );
-
-            error_log('[Webhook] Pedido #' . $idPedido . ' creado para uid=' . $uid);
+            error_log('[Webhook] Pedido #' . $idPedido . ' creado. Total (IVA inc.): ' . $total);
         } catch (\Throwable $e) {
             error_log('[Webhook] Error creando pedido: ' . $e->getMessage());
             http_response_code(500);
@@ -147,9 +144,7 @@ class PagoController
         exit;
     }
 
-    // ── GET /cliente/checkout_success.php ────────────────────────────────────
-    // Pagina de "gracias" — SOLO informativa.
-    // La logica real (crear pedido, vaciar carrito, email) ya ocurrio en webhook().
+    // ── GET /pago/success ─────────────────────────────────────────────────────
     public function success(): array
     {
         Auth::requireLogin();
