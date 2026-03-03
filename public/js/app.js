@@ -8,8 +8,8 @@ function dismissToast(id) {
 }
 
 function showToast(type, message) {
-    const id   = type === 'success' ? 'toast-success' : 'toast-error';
-    const bg   = type === 'success' ? '#16a34a' : '#dc2626';
+    const id = type === 'success' ? 'toast-success' : 'toast-error';
+    const bg = type === 'success' ? '#16a34a' : '#dc2626';
     const icon = type === 'success' ? 'fa-circle-check' : 'fa-circle-xmark';
 
     const prev = document.getElementById(id);
@@ -75,7 +75,11 @@ function showConfirmModal(message, onConfirm) {
     }
 
     document.getElementById('modal-cancel').addEventListener('click', closeModal);
-    document.getElementById('modal-confirm').addEventListener('click', () => { closeModal(); if (onConfirm) onConfirm(); });
+    document.getElementById('modal-confirm').addEventListener('click', () => {
+        overlay.remove();
+        document.body.style.overflow = 'auto';
+        if (onConfirm) onConfirm();
+    });
     overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
     document.addEventListener('keydown', function esc(e) {
         if (e.key === 'Escape') { closeModal(); document.removeEventListener('keydown', esc); }
@@ -151,8 +155,8 @@ document.head.appendChild(style);
 document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.toggle-password').forEach(button => {
         button.addEventListener('click', () => {
-            const input     = button.parentElement.querySelector('input');
-            const eyeOpen   = button.querySelector('.eye-open');
+            const input = button.parentElement.querySelector('input');
+            const eyeOpen = button.querySelector('.eye-open');
             const eyeClosed = button.querySelector('.eye-closed');
             if (input.type === 'password') {
                 input.type = 'text';

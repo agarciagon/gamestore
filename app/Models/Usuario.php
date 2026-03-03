@@ -61,6 +61,10 @@ class Usuario
 
     public function delete(int $id): void
     {
+        // Borra primero los registros relacionados
+        $this->pdo->prepare('DELETE FROM carrito  WHERE id_usuario=?')->execute([$id]);
+        $this->pdo->prepare('DELETE FROM pedidos  WHERE id_usuario=?')->execute([$id]);
+        // Añade aquí otras tablas que referencien id_usuario
         $this->pdo->prepare('DELETE FROM usuarios WHERE id_usuario=?')->execute([$id]);
     }
 

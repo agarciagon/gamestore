@@ -52,7 +52,6 @@ class AdminController
 
     public function deleteCliente(): void
     {
-        error_log('deleteCliente called, id=' . ($_POST['id'] ?? 'none'));
         Csrf::verify();
         $id = (int) ($_POST['id'] ?? 0);
         if ($id > 0) {

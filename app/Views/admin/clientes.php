@@ -147,7 +147,7 @@ if (window.innerWidth <= 768) {
 
 function confirmDeleteCliente(id, name) {
     showConfirmModal(`Delete customer "${name}"? This action cannot be undone.`, () => {
-        const f = document.getElementById('del-c-' + id) ?? document.getElementById('del-cm-' + id);
+        const f = document.getElementById('del-c-' + id) || document.getElementById('del-cm-' + id);
         if (f) f.submit();
     });
 }

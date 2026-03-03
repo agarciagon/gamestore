@@ -1,4 +1,5 @@
 <?php
+
 // public/index.php
 
 define('BASE_PATH', dirname(__DIR__));
@@ -35,11 +36,8 @@ $path     = '/' . ltrim(str_replace($basePath, '', $uri), '/');
 $method   = $_SERVER['REQUEST_METHOD'];
 
 $routes = [
-    // Públicas
     ['GET',  '/',                          'HomeController',     'index'],
     ['GET',  '/index.php',                 'HomeController',     'index'],
-
-    // Auth
     ['GET',  '/auth/login',                'AuthController',     'loginForm'],
     ['POST', '/auth/login',                'AuthController',     'login'],
     ['GET',  '/auth/register',             'AuthController',     'registerForm'],
@@ -49,8 +47,6 @@ $routes = [
     ['POST', '/auth/forgot-password',      'AuthController',     'forgotPassword'],
     ['GET',  '/auth/reset-password',       'AuthController',     'resetForm'],
     ['POST', '/auth/reset-password',       'AuthController',     'resetPassword'],
-
-    // Tienda
     ['GET',  '/catalogo',                  'ProductoController', 'catalogo'],
     ['GET',  '/detalle',                   'ProductoController', 'detalle'],
     ['GET',  '/buscar',                    'ProductoController', 'buscar'],
@@ -58,19 +54,13 @@ $routes = [
     ['POST', '/carrito/add',               'CarritoController',  'add'],
     ['POST', '/carrito/remove',            'CarritoController',  'remove'],
     ['POST', '/carrito/update',            'CarritoController',  'update'],
-
-    // Perfil
     ['GET',  '/perfil',                    'AuthController',     'perfilForm'],
     ['POST', '/perfil/update',             'AuthController',     'updateProfile'],
     ['POST', '/perfil/password',           'AuthController',     'changePassword'],
     ['POST', '/perfil/delete',             'AuthController',     'deleteAccount'],
-
-    // Pago
     ['POST', '/pago/checkout',             'PagoController',     'checkout'],
     ['GET',  '/pago/success',              'PagoController',     'success'],
     ['POST', '/pago/webhook',              'PagoController',     'webhook'],
-
-    // Admin
     ['GET',  '/admin',                     'AdminController',    'dashboard'],
     ['GET',  '/admin/login',               'AuthController',     'adminLoginForm'],
     ['POST', '/admin/login',               'AuthController',     'adminLogin'],
@@ -83,10 +73,8 @@ $routes = [
     ['GET',  '/admin/productos/form',      'ProductoController', 'adminForm'],
     ['POST', '/admin/productos/save',      'ProductoController', 'adminSave'],
     ['POST', '/admin/productos/delete',    'ProductoController', 'adminDelete'],
-    ['GET',  '/admin/pedidos',             'AdminController',    'pedidos'],   // ← GET, AdminController
-    ['POST', '/admin/pedidos/update',     'AdminController',    'updateEstadoPedido'],
-    
-    // Factura
+    ['GET',  '/admin/pedidos',             'AdminController',    'pedidos'],
+    ['POST', '/admin/pedidos/update',      'AdminController',    'updateEstadoPedido'],
     ['GET',  '/factura',                   'FacturaController',  'descargar'],
 ];
 

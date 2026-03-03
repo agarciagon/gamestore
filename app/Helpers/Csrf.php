@@ -33,8 +33,8 @@ class Csrf
             http_response_code(403);
             throw new \RuntimeException('CSRF token invalid.');
         }
-        // Rotar token tras verificacion exitosa
-        unset($_SESSION[self::KEY]);
+        // En vez de unset, regenera inmediatamente
+        $_SESSION[self::KEY] = bin2hex(random_bytes(32));
     }
 
     // Version "soft" — devuelve true/false sin lanzar excepcion

@@ -139,10 +139,13 @@ $navItems = [
             document.getElementById('confirmModal').classList.remove('open');
             _cb = null;
         }
+
         document.getElementById('confirmBtn').addEventListener('click', () => {
+            const cb = _cb;
             closeConfirmModal();
-            if (_cb) _cb();
+            if (cb) cb();
         });
+
         document.getElementById('confirmModal').addEventListener('click', function(e) {
             if (e.target === this) closeConfirmModal();
         });
