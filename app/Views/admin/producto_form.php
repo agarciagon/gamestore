@@ -118,29 +118,37 @@ ob_start();
 
         <!-- Section: Cover image -->
         <div class="panel" style="margin-bottom:16px;">
-            <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border);">
-                <i class="fa-solid fa-image" style="color:#1a56db;margin-right:6px;"></i> Cover Image
+            <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border); display:flex; align-items:center; gap:6px;">
+                <i class="fa-solid fa-image" style="color:#1a56db;"></i> Cover Image
             </div>
-            <?php if (!empty($j['imagen_portada'])): ?>
-                <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+
+            
+            <!-- Styled File Input -->
+            <label style="display:inline-block; padding:8px 16px; background-color:#1a56db; color:white; font-size:13px; font-weight:500; border-radius:6px; cursor:pointer; transition:background .2s;">
+                Select File
+                <input type="file" name="imagen_portada" accept="image/*" style="display:none;" onchange="previewCoverImage(this)">
+            </label>
+            <span id="cover-file-name" style="margin-left:12px; font-size:12px; color:var(--muted);">No file selected</span>
+            
+            <!-- Preview actual o seleccionada -->
+            <div id="cover-preview" style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;">
+                <?php if (!empty($j['imagen_portada'])): ?>
                     <img src="/gamestore/public/assets/img/caratulas/<?= htmlspecialchars($j['imagen_portada']) ?>"
-                        style="width:60px;height:60px;object-fit:cover;border-radius:8px;border:1px solid var(--border);" alt="">
-                    <div>
-                        <div style="font-size:12px;font-weight:500;color:var(--text);">Current image</div>
-                        <div style="font-size:11px;color:var(--muted);"><?= htmlspecialchars($j['imagen_portada']) ?></div>
-                    </div>
-                </div>
-                <input type="hidden" name="imagen_portada" value="<?= htmlspecialchars($j['imagen_portada']) ?>">
-            <?php endif; ?>
-            <input type="file" name="imagen" accept="image/*" class="form-input" style="padding:6px;">
-            <p style="font-size:11px;color:var(--muted);margin-top:6px;">JPG, PNG or WEBP. Leave blank to keep current image.</p>
+                        style="width:120px;height:80px;object-fit:cover;border-radius:8px;border:1px solid var(--border);" alt="Cover Image">
+                    <input type="hidden" name="imagen_portada" value="<?= htmlspecialchars($j['imagen_portada']) ?>">
+                <?php endif; ?>
+            </div>
+
+            <p style="font-size:11px;color:var(--muted);margin-top:6px;">JPG, PNG, or WEBP. Leave blank to keep current image.</p>
         </div>
+
 
         <!-- Section: Screenshots -->
         <div class="panel" style="margin-bottom:24px;">
-            <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border);">
-                <i class="fa-solid fa-images" style="color:#9333ea;margin-right:6px;"></i> Screenshots (max 4)
+            <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border); display:flex; align-items:center; gap:6px;">
+                <i class="fa-solid fa-images" style="color:#9333ea;"></i> Screenshots (max 4)
             </div>
+
             <?php if (!empty($screenshots)): ?>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
                     <?php foreach ($screenshots as $s): ?>
@@ -150,8 +158,18 @@ ob_start();
                 </div>
                 <p style="font-size:11px;color:var(--muted);margin-bottom:10px;">Uploading new screenshots will replace the current ones.</p>
             <?php endif; ?>
-            <input type="file" name="screenshots[]" accept="image/*" multiple class="form-input" style="padding:6px;">
-            <p style="font-size:11px;color:var(--muted);margin-top:6px;">Select up to 4 images. JPG, PNG or WEBP.</p>
+
+            <!-- Styled multiple file input -->
+            <label style="display:inline-block; padding:8px 16px; background-color:#9333ea; color:white; font-size:13px; font-weight:500; border-radius:6px; cursor:pointer; transition:background .2s;">
+                Select Files
+                <input type="file" name="screenshots[]" accept="image/*" multiple style="display:none;" onchange="previewScreenshots(this)">
+            </label>
+            <span id="screenshots-file-name" style="margin-left:12px; font-size:12px; color:var(--muted);">No files selected</span>
+
+            <!-- Preview container -->
+            <div id="screenshots-preview" style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;"></div>
+
+            <p style="font-size:11px;color:var(--muted);margin-top:6px;">Select up to 4 images. JPG, PNG, or WEBP.</p>
         </div>
 
         <!-- Actions -->
@@ -165,6 +183,54 @@ ob_start();
     </form>
 </div>
 
+<script>
+    function previewCoverImage(input) {
+        const file = input.files[0];
+        const fileNameSpan = document.getElementById('cover-file-name');
+        const previewDiv = document.getElementById('cover-preview');
+
+        fileNameSpan.textContent = file ? file.name : 'No file selected';
+
+        // Mostrar miniatura
+        previewDiv.innerHTML = '';
+        if (file) {
+            const img = document.createElement('img');
+            img.src = URL.createObjectURL(file);
+            img.style.width = '100px';
+            img.style.height = '70px';
+            img.style.objectFit = 'cover';
+            img.style.borderRadius = '8px';
+            img.style.border = '1px solid var(--border)';
+            previewDiv.appendChild(img);
+        }
+    }
+
+    function previewScreenshots(input) {
+        const files = Array.from(input.files).slice(0, 4); // limitar a 4
+        const fileNameSpan = document.getElementById('screenshots-file-name');
+        const previewDiv = document.getElementById('screenshots-preview');
+
+        if (files.length === 0) {
+            fileNameSpan.textContent = 'No files selected';
+        } else {
+            fileNameSpan.textContent = files.length + ' file(s) selected';
+        }
+
+        // Limpiar preview anterior
+        previewDiv.innerHTML = '';
+
+        files.forEach(file => {
+            const img = document.createElement('img');
+            img.src = URL.createObjectURL(file);
+            img.style.width = '100px';
+            img.style.height = '70px';
+            img.style.objectFit = 'cover';
+            img.style.borderRadius = '6px';
+            img.style.border = '1px solid var(--border)';
+            previewDiv.appendChild(img);
+        });
+    }
+</script>
 <?php
 $content = ob_get_clean();
 include BASE_PATH . '/app/Views/layouts/admin.php';
