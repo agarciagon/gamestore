@@ -434,16 +434,18 @@ ob_start();
         const H = doc.internal.pageSize.getHeight();
 
         const C = {
-            brand: [45, 55, 72],
-            light: [249, 250, 251],
-            muted: [107, 114, 128],
+            purple: [99, 91, 255],
+            dark: [15, 23, 42],
+            mid: [51, 65, 85],
+            muted: [100, 116, 139],
+            light: [248, 250, 252],
             border: [226, 232, 240],
             white: [255, 255, 255],
-            green: [16, 185, 129],
-            amber: [245, 158, 11],
-            red: [239, 68, 68],
+            green: [22, 163, 74],
+            amber: [217, 119, 6],
+            red: [220, 38, 38],
             blue: [37, 99, 235],
-            neutral: [51, 65, 85],
+            lightPurple: [240, 240, 255],
         };
         const sBg = s => s === 'Successful' ? C.green : s === 'Pending' ? C.amber : s === 'Error' ? C.red : C.blue;
         const f = (style = 'normal', size = 9, color = C.dark) => {
