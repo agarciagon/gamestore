@@ -434,13 +434,13 @@ ob_start();
     const TEAL = [32, 178, 150];
     const GREEN = [16, 185, 129];
     const AMBER = [245, 158, 11];
-    const ROSE = [244, 63, 98];
+    const RED = [244, 26, 48];
     const VIOLET = [99, 91, 255];
 
     function statusRGB(s) {
         if (s === 'Successful') return GREEN;
         if (s === 'Pending') return AMBER;
-        if (s === 'Error') return ROSE;
+        if (s === 'Error') return RED;
         return VIOLET;
     }
 

@@ -721,15 +721,11 @@ body {
     color: var(--yellow);
 }
 
-.status-badge.refunded {
+.status-badge.error {
     background: var(--red-bg);
     color: var(--red);
 }
 
-.status-badge.unknown {
-    background: var(--bg);
-    color: var(--muted);
-}
 
 .status-badge::before {
     content: '';
