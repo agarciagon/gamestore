@@ -418,479 +418,563 @@ ob_start();
     }
 
     /* ══════════════════════════════════════════════════════════════════════════
-       PDF ENGINE
+       PDF ENGINE — Professional redesign
+    ══════════════════════════════════════════════════════════════════════════ */
+
+    // ── Palette ──────────────────────────────────────────────────────────────
+    const INK = [10, 12, 20];
+    const SLATE = [28, 33, 54];
+    const STEEL = [68, 78, 115];
+    const SMOKE = [130, 140, 170];
+    const MIST = [218, 222, 238];
+    const PAPER = [247, 248, 252];
+    const WHITE = [255, 255, 255];
+    const GOLD = [212, 175, 55];
+    const GOLD_L = [255, 223, 100];
+    const TEAL = [32, 178, 150];
+    const GREEN = [16, 185, 129];
+    const AMBER = [245, 158, 11];
+    const ROSE = [244, 63, 98];
+    const VIOLET = [99, 91, 255];
+
+    function statusRGB(s) {
+        if (s === 'Successful') return GREEN;
+        if (s === 'Pending') return AMBER;
+        if (s === 'Error') return ROSE;
+        return VIOLET;
+    }
+
+    function calcTax(totalStr) {
+        const t = parseFloat(totalStr.replace(',', '.'));
+        const base = +(t / 1.21).toFixed(2);
+        const iva = +(t - base).toFixed(2);
+        return {
+            t,
+            base,
+            iva
+        };
+    }
+
+    function fmtEur(n) {
+        return n.toFixed(2) + ' \u20AC';
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    //  INVOICE INDIVIDUAL — Diseño minimalista premium, estilo Stripe/Linear
+    //  Portrait A4 (210×297mm)
+    // ════════════════════════════════════════════════════════════════════════
+    function buildSingleInvoice(doc, r) {
+        const W = 210,
+            H = 297;
+        const {
+            t,
+            base,
+            iva
+        } = calcTax(r.total);
+        const L = 18,
+            R = W - 18; // margins
+        const sc = statusRGB(r.estado);
+        const genDate = r.fecha.split(' ').slice(0, 3).join(' ');
+        const orderNum = '#' + String(r.id).padStart(8, '0');
+        const stripeId = (r.stripe && r.stripe.charAt(0) !== '#') ? r.stripe : null;
+
+        const f = (...c) => doc.setFillColor(...c);
+        const dk = (...c) => doc.setDrawColor(...c);
+        const tx = (s, x, y, o) => doc.text(String(s), x, y, o || {});
+        const ft = (style, size, color) => {
+            doc.setFont('helvetica', style);
+            doc.setFontSize(size);
+            doc.setTextColor(...color);
+        };
+        const hl = (x1, y, x2, col, w) => {
+            dk(...(col || MIST));
+            doc.setLineWidth(w || 0.25);
+            doc.line(x1, y, x2, y);
+        };
+
+        // ── 1. Header band: thin accent bar + brand block ─────────────────
+        // Thin color bar at very top
+        f(...sc);
+        doc.rect(0, 0, W, 1.5, 'F');
+
+        // Clean white header area
+        f(250, 251, 255);
+        doc.rect(0, 1.5, W, 44, 'F');
+
+        // Brand: wordmark left
+        ft('bold', 16, INK);
+        tx('Game', L, 22);
+        ft('bold', 16, VIOLET);
+        tx('Store', L + 25, 22);
+
+        // Tagline
+        ft('normal', 7, SMOKE);
+        tx('Digital Marketplace', L, 28);
+
+        // Right side: INVOICE label + number
+        ft('normal', 7, SMOKE);
+        tx('FACTURA', R, 16, {
+            align: 'right'
+        });
+        ft('bold', 18, INK);
+        tx(orderNum, R, 26, {
+            align: 'right'
+        });
+
+        // Status badge — outline style, no heavy fill
+        dk(...sc);
+        doc.setLineWidth(0.5);
+        doc.roundedRect(R - 38, 30, 38, 8, 2, 2, 'S');
+        ft('bold', 6.5, sc);
+        tx(r.estado.toUpperCase(), R - 19, 35.5, {
+            align: 'center'
+        });
+
+        // ── 2. Divider ────────────────────────────────────────────────────
+        hl(L, 46, R, MIST, 0.4);
+
+        // ── 3. Meta row: fecha · referencia ──────────────────────────────
+        ft('normal', 7, SMOKE);
+        tx('Fecha de emisión', L, 55);
+        tx('Referencia de pago', W / 2, 55);
+
+        ft('bold', 8, INK);
+        tx(genDate, L, 61);
+        if (stripeId) {
+            ft('normal', 6.5, STEEL);
+            tx(stripeId.slice(0, 34), W / 2, 61);
+        } else {
+            ft('bold', 8, INK);
+            tx(orderNum, W / 2, 61);
+        }
+
+        // ── 4. Divider ────────────────────────────────────────────────────
+        hl(L, 68, R, MIST, 0.4);
+
+        // ── 5. Bill-to / Payment — two-column layout ──────────────────────
+        const secY = 78;
+
+        // LEFT: Facturado a
+        ft('normal', 6.5, SMOKE);
+        tx('FACTURADO A', L, secY);
+        hl(L, secY + 1.5, L + 28, sc, 0.6);
+
+        ft('bold', 11, INK);
+        tx(r.nombre, L, secY + 10);
+        ft('normal', 8, STEEL);
+        tx(r.email, L, secY + 17);
+        ft('normal', 7, SMOKE);
+        tx('ID de cliente: ' + String(r.id).padStart(8, '0'), L, secY + 24);
+
+        // RIGHT: Método de pago
+        const rpX = W / 2 + 4;
+        ft('normal', 6.5, SMOKE);
+        tx('MÉTODO DE PAGO', rpX, secY);
+        hl(rpX, secY + 1.5, rpX + 35, sc, 0.6);
+
+        const payRows = [
+            ['Método', 'Visa  ···· 4242'],
+            ['Procesador', 'Stripe Payments'],
+            ['Moneda', 'EUR — Euro'],
+        ];
+        payRows.forEach(([lbl, val], i) => {
+            const py = secY + 10 + i * 8;
+            ft('normal', 7, SMOKE);
+            tx(lbl, rpX, py);
+            ft('bold', 7.5, INK);
+            tx(val, R, py, {
+                align: 'right'
+            });
+        });
+
+        // ── 6. Items table ────────────────────────────────────────────────
+        const tableY = 122;
+        ft('normal', 6.5, SMOKE);
+        tx('DETALLE DEL PEDIDO', L, tableY - 4);
+        hl(L, tableY - 2.5, R, MIST, 0.3);
+
+        // Table header row
+        f(245, 246, 251);
+        doc.rect(L, tableY, R - L, 8, 'F');
+        ft('bold', 6.5, SMOKE);
+        tx('DESCRIPCIÓN', L + 4, tableY + 5.5);
+        tx('CANT.', 132, tableY + 5.5, {
+            align: 'right'
+        });
+        tx('BASE', 154, tableY + 5.5, {
+            align: 'right'
+        });
+        tx('IVA 21%', 172, tableY + 5.5, {
+            align: 'right'
+        });
+        tx('TOTAL', R - 2, tableY + 5.5, {
+            align: 'right'
+        });
+
+        hl(L, tableY + 8, R, MIST, 0.3);
+
+        // Table body row
+        const desc = stripeId ? stripeId : ('Compra digital — ' + orderNum);
+        ft('normal', 8, INK);
+        tx(desc.length > 42 ? desc.slice(0, 41) + '…' : desc, L + 4, tableY + 16);
+        ft('normal', 8, STEEL);
+        tx('1', 132, tableY + 16, {
+            align: 'right'
+        });
+        tx(fmtEur(base), 154, tableY + 16, {
+            align: 'right'
+        });
+        tx(fmtEur(iva), 172, tableY + 16, {
+            align: 'right'
+        });
+        ft('bold', 8, INK);
+        tx(fmtEur(t), R - 2, tableY + 16, {
+            align: 'right'
+        });
+
+        hl(L, tableY + 20, R, MIST, 0.3);
+
+        // ── 7. Totals block ───────────────────────────────────────────────
+        const totY = tableY + 28;
+
+        // Subtotal row
+        ft('normal', 8, SMOKE);
+        tx('Subtotal sin IVA', 130, totY);
+        ft('normal', 8, INK);
+        tx(fmtEur(base), R - 2, totY, {
+            align: 'right'
+        });
+
+        // IVA row
+        ft('normal', 8, SMOKE);
+        tx('IVA 21%', 130, totY + 9);
+        ft('normal', 8, INK);
+        tx(fmtEur(iva), R - 2, totY + 9, {
+            align: 'right'
+        });
+
+        hl(130, totY + 13, R, [200, 204, 220], 0.3);
+
+        // TOTAL row — highlighted
+        f(245, 246, 251);
+        doc.rect(128, totY + 15, R - 128 + 2, 12, 'F');
+        dk(...sc);
+        doc.setLineWidth(0.4);
+        doc.rect(128, totY + 15, R - 128 + 2, 12, 'S');
+        ft('bold', 8, STEEL);
+        tx('TOTAL (IVA incl.)', 132, totY + 22.5);
+        ft('bold', 11, INK);
+        tx(fmtEur(t), R - 2, totY + 23, {
+            align: 'right'
+        });
+
+        // ── 8. Footer info row ────────────────────────────────────────────
+        const footInfoY = H - 38;
+        hl(L, footInfoY, R, MIST, 0.3);
+
+        ft('normal', 7, SMOKE);
+        tx('Este documento es un justificante oficial de pago generado automáticamente.', L, footInfoY + 8);
+        tx('No requiere firma ni sello para ser válido.', L, footInfoY + 14);
+
+        // ── 9. Footer ─────────────────────────────────────────────────────
+        f(245, 246, 251);
+        doc.rect(0, H - 18, W, 18, 'F');
+        f(...sc);
+        doc.rect(0, H - 18, W, 1, 'F');
+
+        ft('bold', 7, STEEL);
+        tx('GAMESTORE', L, H - 9);
+        ft('normal', 6.5, SMOKE);
+        tx('gamestore.com  ·  soporte@gamestore.com  ·  CIF ES-B12345678', L + 28, H - 9);
+        ft('normal', 6, SMOKE);
+        tx('Generado el ' + new Date().toLocaleDateString('es-ES', {
+            day: '2-digit',
+            month: 'long',
+            year: 'numeric'
+        }), R, H - 9, {
+            align: 'right'
+        });
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    //  REPORTE COLECTIVO — Landscape A4 (297×210mm)
+    //  Diseño editorial financiero limpio
+    //  Área útil de tabla: 297 - 14(L) - 14(R) = 269mm
+    //  Columnas: 10+38+56+24+22+26+26+67 = 269 ✓
+    // ════════════════════════════════════════════════════════════════════════
+    function buildMultiReport(doc, rows) {
+        const W = 297,
+            H = 210;
+        const L = 14,
+            R = W - 14;
+        const revenue = rows.reduce((s, r) => s + parseFloat(r.total.replace(',', '.')), 0);
+        const baseRev = +(revenue / 1.21).toFixed(2);
+        const ivaRev = +(revenue - baseRev).toFixed(2);
+        const ok = rows.filter(r => r.estado === 'Successful').length;
+        const pen = rows.filter(r => r.estado === 'Pending').length;
+        const err = rows.filter(r => r.estado === 'Error').length;
+        const now = new Date().toLocaleDateString('es-ES', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric'
+        }); 
+
+        const f = (...c) => doc.setFillColor(...c);
+        const dk = (...c) => doc.setDrawColor(...c);
+        const tx = (s, x, y, o) => doc.text(String(s), x, y, o || {});
+        const ft = (style, size, color) => {
+            doc.setFont('helvetica', style);
+            doc.setFontSize(size);
+            doc.setTextColor(...color);
+        };
+        const hl = (x1, y, x2, col, w) => {
+            dk(...(col || MIST));
+            doc.setLineWidth(w || 0.25);
+            doc.line(x1, y, x2, y);
+        };
+
+        function chrome(pg, total) {
+            // Top bar
+            f(...INK);
+            doc.rect(0, 0, W, 12, 'F');
+            f(...VIOLET);
+            doc.rect(0, 0, 3, 12, 'F');
+
+            ft('bold', 8, WHITE);
+            tx('GameStore', 8, 8);
+            ft('normal', 6.5, [160, 165, 210]);
+            tx('Reporte de pedidos  ·  ' + now, 38, 8);
+            ft('normal', 6, [130, 135, 180]);
+            tx('Pág. ' + pg + ' / ' + total, R, 8, {
+                align: 'right'
+            });
+
+            // Bottom bar
+            f(245, 246, 251);
+            doc.rect(0, H - 9, W, 9, 'F');
+            hl(0, H - 9, W, MIST, 0.3);
+            ft('normal', 5.5, SMOKE);
+            tx('Documento confidencial — solo uso interno  ·  gamestore.com', W / 2, H - 3.5, {
+                align: 'center'
+            });
+        }
+
+        chrome(1, 1);
+
+        // ── Title section ─────────────────────────────────────────────────
+        ft('bold', 20, INK);
+        tx('Reporte de', L, 30);
+        ft('bold', 20, VIOLET);
+        tx('Pedidos', L + 47, 30);
+        ft('normal', 7, SMOKE);
+        tx(rows.length + ' transacciones  ·  Todos los estados', L, 37);
+        hl(L, 40, L + 90, MIST, 0.3);
+
+        // ── Summary band ──────────────────────────────────────────────────
+        const bandY = 44;
+        f(245, 246, 251);
+        doc.rect(L, bandY, R - L, 8, 'F');
+        hl(L, bandY, R, MIST, 0.3);
+        hl(L, bandY + 8, R, MIST, 0.3);
+
+        ft('bold', 6, SMOKE);
+        tx('RESUMEN FISCAL:', L + 2, bandY + 5.5);
+        ft('normal', 6.5, INK);
+        tx('Base: ' + fmtEur(baseRev), L + 32, bandY + 5.5);
+        tx('+  IVA 21%: ' + fmtEur(ivaRev), L + 75, bandY + 5.5);
+        ft('bold', 6.5, VIOLET);
+        tx('=  Total (IVA incl.): ' + fmtEur(revenue), L + 130, bandY + 5.5);
+        ft('normal', 6, SMOKE);
+
+        // ── Table ─────────────────────────────────────────────────────────
+        // Cols: 10+38+56+24+22+26+26+67 = 269 = 297-14-14 ✓
+        doc.autoTable({
+            startY: 56,
+            margin: {
+                left: L,
+                right: L
+            },
+            tableWidth: 269,
+            head: [
+                ['#', 'CLIENTE', 'EMAIL', 'BASE', 'IVA 21%', 'TOTAL', 'ESTADO', 'FECHA']
+            ],
+            body: rows.map((r, idx) => {
+                const {
+                    t,
+                    base,
+                    iva
+                } = calcTax(r.total);
+                const em = r.email.length > 30 ? r.email.slice(0, 29) + '…' : r.email;
+                return [
+                    String(idx + 1).padStart(2, '0'),
+                    r.nombre,
+                    em,
+                    fmtEur(base),
+                    fmtEur(iva),
+                    fmtEur(t),
+                    r.estado,
+                    r.fecha,
+                ];
+            }),
+            headStyles: {
+                fillColor: INK,
+                textColor: [160, 165, 210],
+                fontSize: 6,
+                fontStyle: 'bold',
+                cellPadding: {
+                    top: 4,
+                    bottom: 4,
+                    left: 4,
+                    right: 4
+                },
+            },
+            bodyStyles: {
+                fontSize: 7,
+                textColor: INK,
+                cellPadding: {
+                    top: 4,
+                    bottom: 4,
+                    left: 4,
+                    right: 4
+                },
+                overflow: 'hidden',
+                minCellHeight: 0,
+            },
+            alternateRowStyles: {
+                fillColor: [248, 249, 252]
+            },
+            columnStyles: {
+                0: {
+                    cellWidth: 10,
+                    halign: 'center',
+                    textColor: SMOKE,
+                    fontSize: 6
+                },
+                1: {
+                    cellWidth: 38,
+                    fontStyle: 'bold',
+                    overflow: 'hidden'
+                },
+                2: {
+                    cellWidth: 56,
+                    fontSize: 6.5,
+                    textColor: STEEL,
+                    overflow: 'hidden'
+                },
+                3: {
+                    cellWidth: 24,
+                    halign: 'right'
+                },
+                4: {
+                    cellWidth: 22,
+                    halign: 'right',
+                    textColor: SMOKE
+                },
+                5: {
+                    cellWidth: 26,
+                    halign: 'right',
+                    fontStyle: 'bold'
+                },
+                6: {
+                    cellWidth: 26,
+                    halign: 'center',
+                    textColor: WHITE
+                }, // overridden in didDrawCell
+                7: {
+                    cellWidth: 67,
+                    fontSize: 6.5
+                },
+            },
+            tableLineColor: MIST,
+            tableLineWidth: 0.2,
+
+            didDrawCell(d) {
+                if (d.section !== 'body' || d.column.index !== 6) return;
+                const sc2 = statusRGB(d.cell.raw);
+                const pad = 2.5;
+                f(...sc2);
+                doc.roundedRect(
+                    d.cell.x + pad,
+                    d.cell.y + pad,
+                    d.cell.width - pad * 2,
+                    d.cell.height - pad * 2,
+                    1.5, 1.5, 'F'
+                );
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(5.5);
+                doc.setTextColor(255, 255, 255);
+                doc.text(
+                    d.cell.raw,
+                    d.cell.x + d.cell.width / 2,
+                    d.cell.y + d.cell.height / 2 + 0.5, {
+                        align: 'center'
+                    }
+                );
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(7);
+                doc.setTextColor(...INK);
+            },
+
+            foot: [
+                ['', 'TOTALES', '', fmtEur(baseRev), fmtEur(ivaRev), fmtEur(revenue), '', '']
+            ],
+            footStyles: {
+                fillColor: [240, 241, 248],
+                textColor: VIOLET,
+                fontStyle: 'bold',
+                fontSize: 7.5,
+                cellPadding: {
+                    top: 5,
+                    bottom: 5,
+                    left: 4,
+                    right: 4
+                },
+            },
+            showFoot: 'lastPage',
+            willDrawCell(d) {
+                if (d.section === 'foot') {
+                    dk(...VIOLET);
+                    doc.setLineWidth(0.4);
+                    doc.line(d.cell.x, d.cell.y, d.cell.x + d.cell.width, d.cell.y);
+                }
+            },
+        });
+
+        // Re-draw chrome on all pages with correct count
+        const np = doc.internal.getNumberOfPages();
+        for (let i = 1; i <= np; i++) {
+            doc.setPage(i);
+            chrome(i, np);
+        }
+    }
+
+    /* ══════════════════════════════════════════════════════════════════════════
+       DISPATCH
     ══════════════════════════════════════════════════════════════════════════ */
     function buildPDF(rows) {
         const {
             jsPDF
         } = window.jspdf;
-        const single = rows.length === 1;
-        const doc = new jsPDF({
-            orientation: single ? 'portrait' : 'landscape',
-            unit: 'mm',
-            format: 'a4'
-        });
-        const W = doc.internal.pageSize.getWidth();
-        const H = doc.internal.pageSize.getHeight();
-
-        const C = {
-            purple: [99, 91, 255],
-            dark: [15, 23, 42],
-            mid: [51, 65, 85],
-            muted: [100, 116, 139],
-            light: [248, 250, 252],
-            border: [226, 232, 240],
-            white: [255, 255, 255],
-            green: [22, 163, 74],
-            amber: [217, 119, 6],
-            red: [220, 38, 38],
-            blue: [37, 99, 235],
-            lightPurple: [240, 240, 255],
-        };
-        const sBg = s => s === 'Successful' ? C.green : s === 'Pending' ? C.amber : s === 'Error' ? C.red : C.blue;
-        const f = (style = 'normal', size = 9, color = C.dark) => {
-            doc.setFont('helvetica', style);
-            doc.setFontSize(size);
-            doc.setTextColor(...color);
-        };
-        const hline = (x1, y, x2, col = C.border, w = 0.3) => {
-            doc.setDrawColor(...col);
-            doc.setLineWidth(w);
-            doc.line(x1, y, x2, y);
-        };
-
-        /* ════════════════════════  SINGLE — Portrait Invoice  ══════════════ */
-        if (single) {
-            const r = rows[0];
-            const tot = parseFloat(r.total.replace(',', '.'));
-            const base = (tot / 1.21).toFixed(2);
-            const iva = (tot - parseFloat(base)).toFixed(2);
-
-            // Purple top bar
-            doc.setFillColor(...C.purple);
-            doc.rect(0, 0, W, 2, 'F');
-            // Dark bottom bar
-            doc.setFillColor(...C.dark);
-            doc.rect(0, H - 2, W, 2, 'F');
-
-            // Brand
-            f('bold', 16, C.dark);
-            doc.text('Game', 14, 18);
-            f('bold', 16, C.purple);
-            doc.text('Store', 30, 18);
-
-            // INVOICE + number
-            f('bold', 22, C.dark);
-            doc.text('INVOICE', W - 14, 15, {
-                align: 'right'
+        if (rows.length === 1) {
+            const doc = new jsPDF({
+                orientation: 'portrait',
+                unit: 'mm',
+                format: 'a4'
             });
-            f('normal', 9, C.muted);
-            doc.text('#' + String(r.id).padStart(8, '0'), W - 14, 21, {
-                align: 'right'
+            buildSingleInvoice(doc, rows[0]);
+            return doc;
+        } else {
+            const doc = new jsPDF({
+                orientation: 'landscape',
+                unit: 'mm',
+                format: 'a4'
             });
-
-            // Status badge
-            doc.setFillColor(...sBg(r.estado));
-            doc.roundedRect(W - 46, 24, 32, 8, 2, 2, 'F');
-            f('bold', 7, C.white);
-            doc.text(r.estado.toUpperCase(), W - 30, 29, {
-                align: 'center'
-            });
-
-            hline(14, 36, W - 14);
-
-            // Billed to
-            f('bold', 7.5, C.muted);
-            doc.text('BILLED TO', 14, 45);
-            f('bold', 11, C.dark);
-            doc.text(r.nombre, 14, 52);
-            f('normal', 9, C.muted);
-            doc.text(r.email, 14, 58);
-
-            // Right-side meta
-            [
-                ['Invoice date', r.fecha],
-                ['Payment', 'Visa •••• 4242'],
-                ['Via', 'Stripe']
-            ].forEach(([l, v], i) => {
-                const y = 45 + i * 8;
-                f('normal', 7.5, C.muted);
-                doc.text(l, W - 60, y);
-                f('bold', 7.5, C.dark);
-                doc.text(v, W - 14, y, {
-                    align: 'right'
-                });
-            });
-
-            // Items table (with IVA columns)
-            doc.autoTable({
-                startY: 70,
-                margin: {
-                    left: 14,
-                    right: 14
-                },
-                head: [
-                    ['#', 'Description', 'Qty', 'Base', 'IVA 21%', 'Total']
-                ],
-                body: [
-                    ['01', 'Digital purchase — Order #' + String(r.id).padStart(8, '0'),
-                        '1', base + ' €', iva + ' €', r.total + ' €'
-                    ]
-                ],
-                headStyles: {
-                    fillColor: C.dark,
-                    textColor: C.white,
-                    fontSize: 8,
-                    fontStyle: 'bold',
-                    cellPadding: {
-                        top: 5,
-                        bottom: 5,
-                        left: 5,
-                        right: 5
-                    }
-                },
-                bodyStyles: {
-                    fontSize: 9,
-                    textColor: C.dark,
-                    cellPadding: {
-                        top: 7,
-                        bottom: 7,
-                        left: 5,
-                        right: 5
-                    }
-                },
-                columnStyles: {
-                    0: {
-                        cellWidth: 10,
-                        halign: 'center',
-                        textColor: C.muted
-                    },
-                    1: {
-                        cellWidth: 'auto'
-                    },
-                    2: {
-                        cellWidth: 12,
-                        halign: 'center'
-                    },
-                    3: {
-                        cellWidth: 26,
-                        halign: 'right'
-                    },
-                    4: {
-                        cellWidth: 24,
-                        halign: 'right',
-                        textColor: C.muted
-                    },
-                    5: {
-                        cellWidth: 26,
-                        halign: 'right',
-                        fontStyle: 'bold'
-                    },
-                },
-                tableLineColor: C.border,
-                tableLineWidth: 0.2,
-            });
-
-            const ty = doc.lastAutoTable.finalY;
-
-            // Totals
-            [
-                ['Base amount', base + ' €'],
-                ['IVA 21%', iva + ' €']
-            ].forEach(([l, v], i) => {
-                const y = ty + 12 + i * 8;
-                f('normal', 8.5, C.muted);
-                doc.text(l, W - 60, y);
-                f('bold', 8.5, C.dark);
-                doc.text(v, W - 14, y, {
-                    align: 'right'
-                });
-            });
-            // Total box
-            doc.setFillColor(...C.dark);
-            doc.roundedRect(W - 74, ty + 32, 60, 13, 3, 3, 'F');
-            doc.setFillColor(...C.purple);
-            doc.roundedRect(W - 74, ty + 32, 4, 13, 2, 2, 'F');
-            f('bold', 10, C.white);
-            doc.text('TOTAL', W - 67, ty + 39.5);
-            doc.text(r.total + ' €', W - 16, ty + 39.5, {
-                align: 'right'
-            });
-
-            // Payment box
-            doc.setFillColor(...C.light);
-            doc.roundedRect(14, ty + 10, 62, 30, 3, 3, 'F');
-            doc.setFillColor(...C.purple);
-            doc.roundedRect(14, ty + 10, 3, 30, 1.5, 1.5, 'F');
-            f('bold', 7, C.muted);
-            doc.text('PAYMENT DETAILS', 21, ty + 18);
-            f('bold', 9.5, C.dark);
-            doc.text('Visa  ····  4242', 21, ty + 26);
-            f('normal', 8, C.muted);
-            doc.text('Processed via Stripe', 21, ty + 32);
-
-            hline(14, H - 16, W - 14);
-            f('normal', 7.5, C.muted);
-            doc.text('Thank you for your purchase!', 14, H - 9);
-            doc.text('gamestore.com', W - 14, H - 9, {
-                align: 'right'
-            });
-
+            buildMultiReport(doc, rows);
             return doc;
         }
-
-        /* ════════════════════════  MULTI — Landscape Report  ═══════════════ */
-        const revenue = rows.reduce((s, r) => s + parseFloat(r.total.replace(',', '.')), 0);
-        const baseRev = parseFloat((revenue / 1.21).toFixed(2));
-        const ivaRev = parseFloat((revenue - baseRev).toFixed(2));
-        const okCount = rows.filter(r => r.estado === 'Successful').length;
-        const penCount = rows.filter(r => r.estado === 'Pending').length;
-        const errCount = rows.filter(r => r.estado === 'Error').length;
-
-        // ── Page chrome (header + footer bars) ───────────────────────────────
-        function chrome() {
-            // Header
-            doc.setFillColor(...C.dark);
-            doc.rect(0, 0, W, 18, 'F');
-            doc.setFillColor(...C.purple);
-            doc.rect(0, 0, 5, 18, 'F');
-            // Footer
-            doc.setFillColor(...C.dark);
-            doc.rect(0, H - 10, W, 10, 'F');
-            doc.setFillColor(...C.purple);
-            doc.rect(0, H - 10, 5, 10, 'F');
-        }
-        chrome();
-
-        // ── Header text ───────────────────────────────────────────────────────
-        f('bold', 10, C.white);
-        doc.text('GameStore', 10, 11);
-        f('normal', 8, [180, 180, 230]);
-        doc.text('Admin Panel', 35, 11);
-        f('normal', 7, [150, 150, 200]);
-        doc.text('Orders Report  ·  <?= date('d M Y H:i') ?>', W / 2, 11, {
-            align: 'center'
-        });
-        f('normal', 7, [150, 150, 200]);
-        doc.text(rows.length + ' orders exported', W - 10, 11, {
-            align: 'right'
-        });
-
-        // ── Title + subtitle ──────────────────────────────────────────────────
-        f('bold', 18, C.dark);
-        doc.text('Orders', 10, 31);
-        f('bold', 18, C.purple);
-        doc.text('Report', 38, 31);
-        f('normal', 8, C.muted);
-        doc.text(rows.length + ' transaction' + (rows.length !== 1 ? 's' : '') + '  ·  Period: all time', 10, 38);
-
-        // ── 4 summary cards ───────────────────────────────────────────────────
-        const cards = [{
-                label: 'Total Revenue',
-                value: revenue.toFixed(2) + ' €',
-                sub: 'IVA included',
-                bg: C.purple
-            },
-            {
-                label: 'Successful',
-                value: okCount,
-                sub: okCount + ' paid',
-                bg: C.green
-            },
-            {
-                label: 'Pending',
-                value: penCount,
-                sub: penCount + ' orders',
-                bg: C.amber
-            },
-            {
-                label: 'Errors',
-                value: errCount,
-                sub: errCount + ' orders',
-                bg: C.red
-            },
-        ];
-        const cW = 46,
-            cH = 22,
-            cGap = 3;
-        const cStart = W - 10 - cards.length * (cW + cGap) + cGap;
-        cards.forEach((card, i) => {
-            const cx = cStart + i * (cW + cGap);
-            const cy = 20;
-            // Card bg
-            doc.setFillColor(...card.bg);
-            doc.roundedRect(cx, cy, cW, cH, 3, 3, 'F');
-            // Subtle right stripe
-            doc.setFillColor(255, 255, 255);
-            doc.setGState(doc.GState({
-                opacity: 0.07
-            }));
-            doc.roundedRect(cx + cW - 10, cy, 12, cH, 3, 3, 'F');
-            doc.setGState(doc.GState({
-                opacity: 1
-            }));
-            // Texts
-            f('normal', 6, C.white);
-            doc.text(card.label, cx + cW / 2, cy + 6.5, {
-                align: 'center'
-            });
-            f('bold', 11, C.white);
-            doc.text(String(card.value), cx + cW / 2, cy + 15, {
-                align: 'center'
-            });
-            f('normal', 5.5, [220, 220, 255]);
-            doc.text(card.sub, cx + cW / 2, cy + 21, {
-                align: 'center'
-            });
-        });
-
-        // ── IVA breakdown band ────────────────────────────────────────────────
-        const bandY = 46;
-        doc.setFillColor(...C.lightPurple);
-        doc.roundedRect(10, bandY, W - 20, 9, 2, 2, 'F');
-        doc.setFillColor(...C.purple);
-        doc.roundedRect(10, bandY, 4, 9, 2, 2, 'F');
-        f('bold', 6.5, C.purple);
-        doc.text('IVA BREAKDOWN', 18, bandY + 5.8);
-        f('normal', 6.5, C.dark);
-        doc.text('Base: ' + baseRev.toFixed(2) + ' €', 62, bandY + 5.8);
-        doc.text('IVA 21%: ' + ivaRev.toFixed(2) + ' €', 105, bandY + 5.8);
-        f('bold', 6.5, C.purple);
-        doc.text('Total (IVA inc.): ' + revenue.toFixed(2) + ' €', 155, bandY + 5.8);
-
-        hline(10, 58, W - 10, C.border, 0.3);
-
-        // ── Table ─────────────────────────────────────────────────────────────
-        doc.autoTable({
-            startY: 61,
-            head: [
-                ['Stripe Reference', 'Customer', 'Email', 'Base', 'IVA 21%', 'Total', 'Status', 'Date']
-            ],
-            body: rows.map(r => {
-                const tot = parseFloat(r.total.replace(',', '.'));
-                const base = (tot / 1.21).toFixed(2);
-                const iva = (tot - parseFloat(base)).toFixed(2);
-                return [
-                    r.stripe.length > 26 ? r.stripe.slice(0, 26) + '…' : r.stripe,
-                    r.nombre, r.email,
-                    base + ' €', iva + ' €', r.total + ' €',
-                    r.estado, r.fecha,
-                ];
-            }),
-            headStyles: {
-                fillColor: C.dark,
-                textColor: C.white,
-                fontSize: 7.5,
-                fontStyle: 'bold',
-                cellPadding: {
-                    top: 4,
-                    bottom: 4,
-                    left: 5,
-                    right: 5
-                },
-            },
-            bodyStyles: {
-                fontSize: 7.5,
-                textColor: C.dark,
-                cellPadding: {
-                    top: 3.5,
-                    bottom: 3.5,
-                    left: 5,
-                    right: 5
-                }
-            },
-            alternateRowStyles: {
-                fillColor: [248, 247, 255]
-            },
-            columnStyles: {
-                0: {
-                    cellWidth: 48,
-                    fontSize: 6.8,
-                    textColor: C.muted
-                },
-                1: {
-                    cellWidth: 28
-                },
-                2: {
-                    cellWidth: 46
-                },
-                3: {
-                    cellWidth: 22,
-                    halign: 'right'
-                },
-                4: {
-                    cellWidth: 20,
-                    halign: 'right',
-                    textColor: C.muted
-                },
-                5: {
-                    cellWidth: 24,
-                    halign: 'right',
-                    fontStyle: 'bold'
-                },
-                6: {
-                    cellWidth: 24,
-                    halign: 'center'
-                },
-                7: {
-                    cellWidth: 30
-                },
-            },
-            margin: {
-                left: 10,
-                right: 10
-            },
-            tableLineColor: C.border,
-            tableLineWidth: 0.2,
-
-            // Coloured status badge
-            didDrawCell(data) {
-                if (data.section !== 'body' || data.column.index !== 6) return;
-                doc.setFillColor(...sBg(data.cell.raw));
-                doc.roundedRect(data.cell.x + 2, data.cell.y + 2, data.cell.width - 4, data.cell.height - 4, 1.5, 1.5, 'F');
-                f('bold', 6, C.white);
-                doc.text(data.cell.raw,
-                    data.cell.x + data.cell.width / 2,
-                    data.cell.y + data.cell.height / 2 + 0.6, {
-                        align: 'center'
-                    });
-                f('normal', 7.5, C.dark);
-            },
-
-            foot: [
-                ['', '', 'TOTALS', baseRev.toFixed(2) + ' €', ivaRev.toFixed(2) + ' €', revenue.toFixed(2) + ' €', '', '']
-            ],
-            footStyles: {
-                fillColor: C.lightPurple,
-                textColor: C.purple,
-                fontStyle: 'bold',
-                fontSize: 8,
-                cellPadding: {
-                    top: 4,
-                    bottom: 4,
-                    left: 5,
-                    right: 5
-                },
-            },
-            showFoot: 'lastPage',
-        });
-
-        // ── Footer text on every page ─────────────────────────────────────────
-        const tp = doc.internal.getNumberOfPages();
-        for (let i = 1; i <= tp; i++) {
-            doc.setPage(i);
-            if (i > 1) chrome();
-            f('normal', 6, [160, 160, 210]);
-            doc.text('GameStore · Confidential · gamestore.com', 10, H - 4);
-            doc.text('Page ' + i + ' / ' + tp, W - 10, H - 4, {
-                align: 'right'
-            });
-        }
-
-        return doc;
     }
 
-    /* ── Export helpers ─────────────────────────────────────────────────────── */
+    /* ── Export helpers ── */
     function getAllRows() {
         return [...document.querySelectorAll('#ordersTable tbody tr[data-row]')]
             .filter(tr => tr.style.display !== 'none')
@@ -902,6 +986,7 @@ ob_start();
             .filter(tr => tr.querySelector('.row-check')?.checked)
             .map(tr => JSON.parse(tr.dataset.row));
     }
+
     document.getElementById('exportBtn').addEventListener('click', () => {
         const rows = getAllRows();
         if (!rows.length) {
