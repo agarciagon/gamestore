@@ -9,25 +9,32 @@ function format(items) {
                 <th class="px-4 py-2">Game</th>
                 <th class="px-4 py-2">Qty</th>
                 <th class="px-4 py-2">Unit Price</th>
+                <th class="px-4 py-2">TAX (21%)</th>
                 <th class="px-4 py-2">Subtotal</th>
             </tr>
         </thead>
     `;
 
     html += '<tbody>';
-items.forEach((item, index) => {
-    const subtotal = parseFloat(item.precio_unidad) * item.cantidad;
-    const border = index > 0 ? 'style="border-top: 1px solid #e0e0e0;"' : '';
-    html += `
-        <tr ${border}>
-            <td class="px-4 py-2 text-white">${item.titulo}</td>
-            <td class="px-4 py-2 text-gray-300">${item.cantidad}</td>
-            <td class="px-4 py-2 text-gray-300">${parseFloat(item.precio_unidad).toFixed(2)}€</td>
-            <td class="px-4 py-2 text-white font-semibold">${subtotal.toFixed(2)}€</td>
-        </tr>
-    `;
-});
-html += '</tbody>';
+    items.forEach((item, index) => {
+        const precioUnitario = parseFloat(item.precio_unidad/1.21);
+        const cantidad = parseInt(item.cantidad, 10);
+        const iva = precioUnitario * 0.21; // 21% IVA
+        const precioConIva = precioUnitario + iva;
+        const subtotal = precioConIva * cantidad;
+        const border = index > 0 ? 'style="border-top: 1px solid #e0e0e0;"' : '';
+
+        html += `
+            <tr ${border}>
+                <td class="px-4 py-2 text-white">${item.titulo}</td>
+                <td class="px-4 py-2 text-gray-300">${cantidad}</td>
+                <td class="px-4 py-2 text-gray-300">${precioUnitario.toFixed(2)}€</td>
+                <td class="px-4 py-2 text-white font-semibold">${iva.toFixed(2)}€</td>
+                <td class="px-4 py-2 text-white font-semibold">${subtotal.toFixed(2)}€</td>
+            </tr>
+        `;
+    });
+    html += '</tbody>';
 
     html += '</table>';
     return html;
