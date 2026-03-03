@@ -1016,5 +1016,3 @@ ob_start();
 $content = ob_get_clean();
 include BASE_PATH . '/app/Views/layouts/admin.php';
 
-
-/* hola caracola   o eso espero*/
