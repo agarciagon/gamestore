@@ -418,7 +418,7 @@ ob_start();
     }
 
     /* ══════════════════════════════════════════════════════════════════════════
-       PDF ENGINE — Professional redesign
+       PDF ENGINE
     ══════════════════════════════════════════════════════════════════════════ */
 
     // ── Palette ──────────────────────────────────────────────────────────────
@@ -460,8 +460,7 @@ ob_start();
     }
 
     // ════════════════════════════════════════════════════════════════════════
-    //  INVOICE INDIVIDUAL — Diseño minimalista premium, estilo Stripe/Linear
-    //  Portrait A4 (210×297mm)
+    //  INVOICE INDIVIDUAL 
     // ════════════════════════════════════════════════════════════════════════
     function buildSingleInvoice(doc, r) {
         const W = 210,
@@ -697,10 +696,7 @@ ob_start();
     }
 
     // ════════════════════════════════════════════════════════════════════════
-    //  REPORTE COLECTIVO — Landscape A4 (297×210mm)
-    //  Diseño editorial financiero limpio
-    //  Área útil de tabla: 297 - 14(L) - 14(R) = 269mm
-    //  Columnas: 10+38+56+24+22+26+26+67 = 269 ✓
+    //  REPORTE COLECTIVO 
     // ════════════════════════════════════════════════════════════════════════
     function buildMultiReport(doc, rows) {
         const W = 297,
@@ -787,7 +783,6 @@ ob_start();
         ft('normal', 6, SMOKE);
 
         // ── Table ─────────────────────────────────────────────────────────
-        // Cols: 10+38+56+24+22+26+26+67 = 269 = 297-14-14 ✓
         doc.autoTable({
             startY: 56,
             margin: {
