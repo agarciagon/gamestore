@@ -1,0 +1,1 @@
+Aplicación de e-commerce para venta de videojuegos con arquitectura MVC completa: catálogo de productos, carrito, autenticación de usuarios, pasarela de pago con Stripe y generación automática de recibos en PDF.
